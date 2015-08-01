@@ -1,7 +1,7 @@
 import midi, numpy
 
-lowerBound = 36
-upperBound = 92
+lowerBound = 24
+upperBound = 102
 
 def midiToNoteStateMatrix(midifile):
 
@@ -31,17 +31,18 @@ def midiToNoteStateMatrix(midifile):
 
                 evt = track[pos]
                 if isinstance(evt, midi.NoteEvent):
-                    try:
+                    if (evt.pitch < lowerBound) or (evt.pitch >= upperBound):
+                        pass
+                        # print "Note {} at time {} out of bounds (ignoring)".format(evt.pitch, time)
+                    else:
                         if isinstance(evt, midi.NoteOffEvent) or evt.velocity == 0:
                             state[evt.pitch-lowerBound] = [0, 0]
                         else:
                             state[evt.pitch-lowerBound] = [1, 1]
-                    except IndexError:
-                        print "Note {} at time {} out of bounds (ignoring)".format(evt.pitch, time)
                 elif isinstance(evt, midi.TimeSignatureEvent):
                     if evt.numerator not in (2, 4):
                         # We don't want to worry about non-4 time signatures. Bail early!
-                        print "Found time signature event {}. Bailing!".format(evt)
+                        # print "Found time signature event {}. Bailing!".format(evt)
                         return statematrix
 
                 try:

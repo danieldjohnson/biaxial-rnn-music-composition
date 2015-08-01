@@ -3,7 +3,7 @@ from midi_to_statematrix import *
 from data import *
 import cPickle as pickle
 
-batch_width = 5 # number of sequences in a batch
+batch_width = 8 # number of sequences in a batch
 batch_len = 16*8 # length of each sequence
 division_len = 16 # interval between possible start locations
 
@@ -22,13 +22,14 @@ def loadPieces(dirpath):
             continue
 
         pieces[name] = outMatrix
-        print "Loaded {}".format(name)
+        # print "Loaded {}".format(name)
 
     return pieces
 
 def getPieceSegment(pieces):
     piece_output = random.choice(pieces.values())
     start = random.randrange(0,len(piece_output)-batch_len,division_len)
+    # print "Range is {} {} {} -> {}".format(0,len(piece_output)-batch_len,division_len, start)
 
     seg_out = piece_output[start:start+batch_len]
     seg_in = noteStateMatrixToInputForm(seg_out)
