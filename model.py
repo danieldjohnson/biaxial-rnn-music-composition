@@ -4,7 +4,7 @@ import theano_lstm
 
 from out_to_in_op import OutputFormToInputFormOp
 
-from theano_lstm import Embedding, LSTM, RNN, StackedCells, Layer, create_optimization_updates, masked_loss
+from theano_lstm import Embedding, LSTM, RNN, StackedCells, Layer, create_optimization_updates, masked_loss, MultiDropout
     
 def has_hidden(layer):
     """
@@ -74,13 +74,16 @@ def ensure_list(result):
 
 class Model(object):
     
-    def __init__(self, t_layer_sizes, p_layer_sizes):
+    def __init__(self, t_layer_sizes, p_layer_sizes, dropout=0):
         
+        self.t_layer_sizes = t_layer_sizes
+        self.p_layer_sizes = p_layer_sizes
+
         # From our architecture definition, size of the notewise input
-        t_input_size = 80
+        self.t_input_size = 80
         
         # time network maps from notewise input size to various hidden sizes
-        self.time_model = StackedCells( t_input_size, celltype=LSTM, layers = t_layer_sizes)
+        self.time_model = StackedCells( self.t_input_size, celltype=LSTM, layers = t_layer_sizes)
         self.time_model.layers.append(PassthroughLayer())
         
         # pitch network takes last layer of time model and state of last note, moving upward
@@ -89,13 +92,14 @@ class Model(object):
         self.pitch_model = StackedCells( p_input_size, celltype=LSTM, layers = p_layer_sizes)
         self.pitch_model.layers.append(Layer(p_layer_sizes[-1], 2, activation = T.nnet.sigmoid))
         
+        self.dropout = dropout
 
         self.conservativity = T.fscalar()
         self.srng = T.shared_randomstreams.RandomStreams(np.random.randint(0, 1024))
 
-        self.setup_slow_walk()
         self.setup_train()
         self.setup_predict()
+        self.setup_slow_walk()
 
     @property
     def params(self):
@@ -127,14 +131,20 @@ class Model(object):
         
         self.epsilon = np.spacing(np.float32(1.0))
 
-        def step_time(in_data, *states):
-            hiddens = list(states)
-            new_states = self.time_model.forward(in_data, prev_hiddens = hiddens)
+        def step_time(in_data, *other):
+            other = list(other)
+            split = -len(self.t_layer_sizes) if self.dropout else len(other)
+            hiddens = other[:split]
+            masks = [None] + other[split:] if self.dropout else []
+            new_states = self.time_model.forward(in_data, prev_hiddens=hiddens, dropout=masks)
             return new_states
         
-        def step_note(in_data, *states):
-            hiddens = list(states)
-            new_states = self.pitch_model.forward(in_data, prev_hiddens = hiddens)
+        def step_note(in_data, *other):
+            other = list(other)
+            split = -len(self.p_layer_sizes) if self.dropout else len(other)
+            hiddens = other[:split]
+            masks = [None] + other[split:] if self.dropout else []
+            new_states = self.pitch_model.forward(in_data, prev_hiddens=hiddens, dropout=masks)
             return new_states
         
         # We generate an output for each input, so it doesn't make sense to use the last output as an input.
@@ -147,8 +157,14 @@ class Model(object):
         time_inputs = input_slice.transpose((1,0,2,3)).reshape((n_time,n_batch*n_note,n_ipn))
         num_time_parallel = time_inputs.shape[1]
         
+        # apply dropout
+        if self.dropout > 0:
+            time_masks = theano_lstm.MultiDropout( [(num_time_parallel, shape) for shape in self.t_layer_sizes], self.dropout)
+        else:
+            time_masks = []
+
         time_outputs_info = [initial_state_with_taps(layer, num_time_parallel) for layer in self.time_model.layers]
-        time_result, _ = theano.scan(fn=step_time, sequences=[time_inputs], outputs_info=time_outputs_info)
+        time_result, _ = theano.scan(fn=step_time, sequences=[time_inputs], non_sequences=time_masks, outputs_info=time_outputs_info)
         
         self.time_thoughts = time_result
         
@@ -171,8 +187,14 @@ class Model(object):
         note_inputs = T.concatenate( [time_final, note_choices_inputs], axis=2 )
         num_timebatch = note_inputs.shape[1]
         
+        # apply dropout
+        if self.dropout > 0:
+            pitch_masks = theano_lstm.MultiDropout( [(num_timebatch, shape) for shape in self.p_layer_sizes], self.dropout)
+        else:
+            pitch_masks = []
+
         note_outputs_info = [initial_state_with_taps(layer, num_timebatch) for layer in self.pitch_model.layers]
-        note_result, _ = theano.scan(fn=step_note, sequences=[note_inputs], outputs_info=note_outputs_info)
+        note_result, _ = theano.scan(fn=step_note, sequences=[note_inputs], non_sequences=pitch_masks, outputs_info=note_outputs_info)
         
         self.note_thoughts = note_result
         
@@ -214,7 +236,15 @@ class Model(object):
         hiddens = list(states[:-1])
         in_data_from_prev = states[-1]
         in_data = T.concatenate([in_data_from_time, in_data_from_prev])
-        new_states = self.pitch_model.forward(in_data, prev_hiddens = hiddens)
+
+        # correct for dropout
+        if self.dropout > 0:
+            masks = [1 - self.dropout for layer in self.pitch_model.layers]
+            masks[0] = None
+        else:
+            masks = []
+
+        new_states = self.pitch_model.forward(in_data, prev_hiddens=hiddens, dropout=masks)
         
         # Now new_states is a per-layer set of activations.
         probabilities = get_last_layer(new_states)
@@ -239,7 +269,15 @@ class Model(object):
             hiddens = list(states[:-2])
             in_data = states[-2]
             time = states[-1]
-            new_states = self.time_model.forward(in_data, prev_hiddens = hiddens)
+
+            # correct for dropout
+            if self.dropout > 0:
+                masks = [1 - self.dropout for layer in self.time_model.layers]
+                masks[0] = None
+            else:
+                masks = []
+
+            new_states = self.time_model.forward(in_data, prev_hiddens=hiddens, dropout=masks)
             
             # Now new_states is a list of matrix [layer](notes, hidden_states) for each layer
             time_final = get_last_layer(new_states)
@@ -298,7 +336,14 @@ class Model(object):
         self.walk_time = theano.shared(np.array(0, dtype='int64'))
         self.walk_hiddens = [theano.shared(np.ones((2,2), dtype=theano.config.floatX)) for layer in self.time_model.layers if has_hidden(layer)]
         
-        new_states = self.time_model.forward(self.walk_input, prev_hiddens = self.walk_hiddens)
+        # correct for dropout
+        if self.dropout > 0:
+            masks = [1 - self.dropout for layer in self.time_model.layers]
+            masks[0] = None
+        else:
+            masks = []
+
+        new_states = self.time_model.forward(self.walk_input, prev_hiddens=self.walk_hiddens, dropout=masks)
 
         # Now new_states is a list of matrix [layer](notes, hidden_states) for each layer
         time_final = get_last_layer(new_states)
