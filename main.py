@@ -3,28 +3,10 @@ import gzip
 import numpy
 from midi_to_statematrix import *
 
-rel_modules = []
-
 import multi_training
-rel_modules.append(multi_training)
 import model
-rel_modules.append(model)
 
-def refresh():
-	for mod in rel_modules:
-		reload(mod)
-
-pcs = multi_training.loadPieces("music")
-# pickle.dump( pcs, gzip.GzipFile( "traindata.p.zip", "wb" ) )
-# pcs = pickle.load(gzip.GzipFile( "traindata.p.zip", "r"))
-
-m = model.Model([300,300],[100,50], dropout=0.5)
-
-multi_training.trainPiece(m, pcs, 10000)
-
-pickle.dump( m.learned_config, open( "output/final_learned_config.p", "wb" ) )
-
-def gen_adaptive(times,keep_thoughts=False,name="final"):
+def gen_adaptive(m,pcs,times,keep_thoughts=False,name="final"):
 	xIpt, xOpt = map(lambda x: numpy.array(x, dtype='int8'), multi_training.getPieceSegment(pcs))
 	all_outputs = [xOpt[0]]
 	if keep_thoughts:
@@ -47,7 +29,7 @@ def gen_adaptive(times,keep_thoughts=False,name="final"):
 	if keep_thoughts:
 		pickle.dump(all_thoughts, open('output/'+name+'.p','wb'))
 
-def fetch_train_thoughts(batches,name="trainthoughts"):
+def fetch_train_thoughts(m,pcs,batches,name="trainthoughts"):
 	all_thoughts = []
 	for i in range(batches):
 		ipt, opt = multi_training.getPieceBatch(pcs)
@@ -55,4 +37,12 @@ def fetch_train_thoughts(batches,name="trainthoughts"):
 		all_thoughts.append((ipt,opt,thoughts))
 	pickle.dump(all_thoughts, open('output/'+name+'.p','wb'))
 
+if __name__ == '__main__':
 
+	pcs = multi_training.loadPieces("music")
+
+	m = model.Model([300,300],[100,50], dropout=0.5)
+
+	multi_training.trainPiece(m, pcs, 10000)
+
+	pickle.dump( m.learned_config, open( "output/final_learned_config.p", "wb" ) )
