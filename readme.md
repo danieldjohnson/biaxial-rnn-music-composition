@@ -9,7 +9,7 @@ You can read about its design and hear examples on [this blog post](http://www.h
 This code is written in Python, and depends on having Theano and theano-lstm (which can be installed with pip) installed. The bare minimum you should need to do to get everything running, assuming you have Python, is
 ```
 sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git 
-sudo pip install numpy scipy theano-lstm
+sudo pip install numpy scipy theano-lstm python-midi
 ```
 
 In addition, the included setup scripts should set up the environment exactly as it was when I trained the network on an Amazon EC2 g2.2xlarge instance with an external EBS volume. Installing it with other setups will likely be slightly different.
