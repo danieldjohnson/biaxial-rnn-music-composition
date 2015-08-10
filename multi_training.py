@@ -21,7 +21,7 @@ def loadPieces(dirpath):
 
         outMatrix = midiToNoteStateMatrix(os.path.join(dirpath, fname))
         if len(outMatrix) < batch_len:
-            continuet
+            continue
 
         pieces[name] = outMatrix
         print "Loaded {}".format(name)
