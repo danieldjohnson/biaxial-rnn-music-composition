@@ -19,12 +19,15 @@ def loadPieces(dirpath):
 
         name = fname[:-4]
 
-        outMatrix = midiToNoteStateMatrix(os.path.join(dirpath, fname))
-        if len(outMatrix) < batch_len:
-            continue
+        try:
+            outMatrix = midiToNoteStateMatrix(os.path.join(dirpath, fname))
+            if len(outMatrix) < batch_len:
+                continue
 
-        pieces[name] = outMatrix
-        print "Loaded {}".format(name)
+            pieces[name] = outMatrix
+            print "Loaded {}".format(name)
+        except Exception, e:
+            print "Skipping to load {} due to error".format(name)
 
     return pieces
 
