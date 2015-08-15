@@ -15,7 +15,7 @@ def gen_adaptive(m,pcs,times,keep_thoughts=False,name="final"):
 	cons = 1
 	for time in range(multi_training.batch_len*times):
 		resdata = m.slow_walk_fun( cons )
-		nnotes = np.sum(resdata[-1][:,0])
+		nnotes = numpy.sum(resdata[-1][:,0])
 		if nnotes < 2:
 			if cons > 1:
 				cons = 1
