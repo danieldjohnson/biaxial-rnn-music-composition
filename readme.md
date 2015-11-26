@@ -18,7 +18,7 @@ In addition, the included setup scripts should set up the environment exactly as
 
 First, you will need to obtain a large selection of midi music, preferably in 4/4 time, with notes correctly aligned to beats. These can be placed in a directory "music".
 
-To use the model, you need to first create an instance of the Model class:
+To use the model, you need to first create an instance of the Model class using Python 2.7:
 ```python
 import model
 m = model.Model([300,300],[100,50], dropout=0.5)
