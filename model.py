@@ -178,7 +178,7 @@ class Model(object):
         # note_choices_inputs represents the last chosen note. Starts with [0,0], doesn't include last note.
         # In (note, batch/time, 2) format
         # Shape of start is thus (1, N, 2), concatenated with all but last element of output_mat transformed to (x, N, 2)
-        start_note_values = T.alloc(0, 1, time_final.shape[1], 2 )
+        start_note_values = T.alloc(np.array(0,dtype=np.int8), 1, time_final.shape[1], 2 )
         correct_choices = self.output_mat[:,1:,0:-1,:].transpose((2,0,1,3)).reshape((n_note-1,n_batch*n_time,2))
         note_choices_inputs = T.concatenate([start_note_values, correct_choices], axis=0)
         
@@ -282,7 +282,7 @@ class Model(object):
             # Now new_states is a list of matrix [layer](notes, hidden_states) for each layer
             time_final = get_last_layer(new_states)
             
-            start_note_values = theano.tensor.alloc(0, 2)
+            start_note_values = theano.tensor.alloc(np.array(0,dtype=np.int8), 2)
             
             # This gets a little bit complicated. In the training case, we can pass in a combination of the
             # time net's activations with the known choices. But in the prediction case, those choices don't
@@ -348,7 +348,7 @@ class Model(object):
         # Now new_states is a list of matrix [layer](notes, hidden_states) for each layer
         time_final = get_last_layer(new_states)
         
-        start_note_values = theano.tensor.alloc(0, 2)
+        start_note_values = theano.tensor.alloc(np.array(0,dtype=np.int8), 2)
         note_outputs_info = ([ initial_state_with_taps(layer) for layer in self.pitch_model.layers ] +
                              [ dict(initial=start_note_values, taps=[-1]) ])
         
