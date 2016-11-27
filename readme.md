@@ -8,7 +8,7 @@ You can read about its design and hear examples on [this blog post](http://www.h
 
 This code is written in Python, and depends on having Theano and theano-lstm (which can be installed with pip) installed. The bare minimum you should need to do to get everything running, assuming you have Python, is
 ```
-sudo pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git 
+sudo pip install --upgrade theano
 sudo pip install numpy scipy theano-lstm python-midi
 ```
 
