@@ -254,7 +254,7 @@ class Model(object):
         shouldPlay = self.srng.uniform() < (probabilities[0] ** self.conservativity)
         shouldArtic = shouldPlay * (self.srng.uniform() < probabilities[1])
         
-        chosen = T.stack(shouldPlay, shouldArtic)
+        chosen = T.cast(T.stack(shouldPlay, shouldArtic), "int8")
         
         return ensure_list(new_states) + [chosen]
 
