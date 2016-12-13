@@ -14,7 +14,10 @@ def has_hidden(layer):
     return hasattr(layer, 'initial_hidden_state')
 
 def matrixify(vector, n):
-    return T.repeat(T.shape_padleft(vector), n, axis=0)
+    # Cast n to int32 if necessary to prevent error on 32 bit systems
+    return T.repeat(T.shape_padleft(vector),
+                    n if (theano.gof.local_bitwidth() == 64) else T.cast(n,'int32'),
+                    axis=0)
 
 def initial_state(layer, dimensions = None):
     """
