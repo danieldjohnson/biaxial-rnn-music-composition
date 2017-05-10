@@ -46,3 +46,12 @@ gen_adaptive(m,pcs,10,name="composition")
 There are also mechanisms to observe the hidden activations and memory cells of the network, but these are still a work in progress at the moment.
 
 Right now, there is no separate validation step, because my initial goal was to produce interesting music, not to assess the accuracy of this method. It does, however, print out the cost on the training set after every 100 iterations during training.
+
+If you want to save your model weights, you can do
+```python
+pickle.dump( m.learned_config, open( "path_to_weight_file.p", "wb" ) )
+```
+and if you want to load them, you can do
+```python
+m.learned_config = pickle.load(open( "path_to_weight_file.p", "rb" ) )
+```
