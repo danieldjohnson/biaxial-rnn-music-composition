@@ -1,4 +1,5 @@
 import cPickle as pickle
+import os.path
 import gzip
 import numpy
 from midi_to_statematrix import *
@@ -37,11 +38,20 @@ def fetch_train_thoughts(m,pcs,batches,name="trainthoughts"):
 		all_thoughts.append((ipt,opt,thoughts))
 	pickle.dump(all_thoughts, open('output/'+name+'.p','wb'))
 
+def create_output_directory():
+	outputdir = "output"
+	try:
+		os.stat(outputdir)
+	except:
+		os.mkdir(outputdir)
+
 if __name__ == '__main__':
 
 	pcs = multi_training.loadPieces("music")
 
 	m = model.Model([300,300],[100,50], dropout=0.5)
+
+	create_output_directory()
 
 	multi_training.trainPiece(m, pcs, 10000)
 
